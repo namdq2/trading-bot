@@ -131,7 +131,7 @@ Example with 100,000 USDT:
 
 ### 1. High-Level Architecture
 
-```
+```mermaid
 graph TD
     %% Client Layer
     WD[Web Dashboard]
