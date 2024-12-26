@@ -1,0 +1,59 @@
+marketdata/
+├── cmd/
+│   └── main.go
+├── internal/
+│   ├── domain/
+│   │   ├── entity/
+│   │   │   ├── orderbook.go
+│   │   │   └── trade.go
+│   │   ├── repository/
+│   │   │   └── interfaces.go
+│   │   ├── service/
+│   │   │   └── interfaces.go
+│   │   └── valueobject/
+│   │       ├── price.go
+│   │       └── volume.go
+│   ├── infrastructure/
+│   │   ├── persistence/
+│   │   │   ├── redis/
+│   │   │   │   └── orderbook_repository.go
+│   │   │   └── timescale/
+│   │   │       └── trade_repository.go
+│   │   ├── exchange/
+│   │   │   ├── binance/
+│   │   │   │   └── client.go
+│   │   │   ├── okx/
+│   │   │   │   └── client.go
+│   │   │   └── bybit/
+│   │   │       └── client.go
+│   │   └── messaging/
+│   │       ├── kafka/
+│   │       │   └── publisher.go
+│   │       └── rabbitmq/
+│   │           └── publisher.go
+│   ├── application/
+│   │   ├── dto/
+│   │   │   ├── orderbook_dto.go
+│   │   │   └── trade_dto.go
+│   │   ├── service/
+│   │   │   └── marketdata_service.go
+│   │   └── port/
+│   │       ├── input/
+│   │       │   └── marketdata_usecase.go
+│   │       └── output/
+│   │           └── repository_port.go
+│   └── interfaces/
+│       ├── api/
+│       │   ├── http/
+│       │   │   └── handler.go
+│       │   └── grpc/
+│       │       └── server.go
+│       └── event/
+│           └── consumer.go
+├── pkg/
+│   ├── logger/
+│   │   └── logger.go
+│   └── metrics/
+│       └── metrics.go
+└── config/
+    └── config.go 
