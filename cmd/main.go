@@ -8,8 +8,8 @@ import (
 
 	"marketdata/config"
 	"marketdata/internal/application/service"
-	"marketdata/internal/exchange"
-	"marketdata/internal/repository"
+	"marketdata/internal/domain/repository"
+	"marketdata/internal/infrastructure/exchange"
 	"marketdata/pkg/logger"
 )
 
