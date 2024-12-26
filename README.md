@@ -131,21 +131,19 @@ Example with 100,000 USDT:
 
 ### 1. High-Level Architecture
 
-```mermaid
-flowchart TD
-    subgraph Client Layer
+```
+graph TD
+    %% Client Layer
     WD[Web Dashboard]
     AC[Admin Console]
     MA[Mobile App]
-    end
 
-    subgraph Gateway
+    %% Gateway Layer
     AG[API Gateway]
     Auth[Authentication]
     LB[Load Balancer]
-    end
 
-    subgraph Core Services
+    %% Core Services
     MDS[Market Data Service]
     AS[Arbitrage Scanner]
     TE[Trading Engine]
@@ -153,37 +151,48 @@ flowchart TD
     PM[Portfolio Manager]
     CM[Config Manager]
     AN[Analytics Service]
-    end
 
-    subgraph Data Layer
+    %% Data Layer
     TS[(Time Series DB)]
     RD[(Redis Cache)]
     PG[(PostgreSQL)]
     MQ[Message Queue]
     VS[Vault Secrets]
-    end
 
-    subgraph External
+    %% External Systems
     EX1[Exchange 1]
     EX2[Exchange 2]
     EXN[Exchange N]
-    end
 
-    Client Layer --> AG
+    %% Client to Gateway
+    WD --> AG
+    AC --> AG
+    MA --> AG
     AG --> Auth
     Auth --> LB
-    LB --> Core Services
 
+    %% Gateway to Services
+    LB --> MDS
+    LB --> AS
+    LB --> TE
+    LB --> RM
+    LB --> PM
+    LB --> CM
+    LB --> AN
+
+    %% Market Data Service
     MDS --> TS
     MDS --> RD
     MDS --> EX1
     MDS --> EX2
     MDS --> EXN
 
+    %% Arbitrage Scanner
     AS --> MDS
     AS --> RD
     AS --> MQ
 
+    %% Trading Engine
     TE --> AS
     TE --> RM
     TE --> PM
@@ -192,22 +201,31 @@ flowchart TD
     TE --> EXN
     TE --> MQ
 
+    %% Risk Manager
     RM --> RD
     RM --> PG
     RM --> MQ
 
+    %% Portfolio Manager
     PM --> PG
     PM --> TS
     PM --> RD
 
+    %% Config Manager
     CM --> VS
-    CM --> Core Services
 
+    %% Analytics Service
     AN --> TS
     AN --> PG
     AN --> RD
 
-    MQ --> Core Services
+    %% Message Queue
+    MQ --> MDS
+    MQ --> AS
+    MQ --> TE
+    MQ --> RM
+    MQ --> PM
+    MQ --> AN
 ```
 
 ### 2. Core Services Details
