@@ -8,6 +8,8 @@ import (
 
 	"marketdata/config"
 	"marketdata/internal/application/service"
+	"marketdata/internal/exchange"
+	"marketdata/internal/repository"
 	"marketdata/pkg/logger"
 )
 
@@ -27,7 +29,14 @@ func main() {
 	defer cancel()
 
 	// Initialize market data service
-	svc, err := service.NewMarketDataService(ctx, cfg, log)
+	svc, err := service.NewMarketDataService(
+		ctx,
+		cfg,
+		log,
+		repository.NewOrderBookRepository(redisClient),
+		repository.NewTradeRepository(dbClient),
+		exchange.NewExchangeManager(cfg.Exchange),
+	)
 	if err != nil {
 		log.Fatal("failed to create market data service", err)
 	}
