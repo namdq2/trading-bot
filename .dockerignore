@@ -1,0 +1,72 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.docker
+.dockerignore
+
+# Build artifacts
+bin/
+dist/
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test files
+*.test
+*.out
+coverage.html
+mock_*.go
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Debug files
+debug/
+
+# Local development files
+.env*
+*.log
+logs/
+tmp/
+temp/
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Data directories
+data/
+docker/volumes/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Certificate files
+*.pem
+*.crt
+*.key
+
+# Generated files
+*.pb.go
+
+# Development configs
+config/config.yaml
+!config/config.example.yaml 
