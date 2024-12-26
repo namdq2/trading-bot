@@ -133,99 +133,302 @@ Example with 100,000 USDT:
 
 ```mermaid
 graph TD
-    %% Client Layer
-    WD[Web Dashboard]
-    AC[Admin Console]
-    MA[Mobile App]
+    subgraph Client["Client Layer"]
+        WD[Web Dashboard]
+        AC[Admin Console]
+        MA[Mobile App]
+    end
 
-    %% Gateway Layer
-    AG[API Gateway]
-    Auth[Authentication]
-    LB[Load Balancer]
+    subgraph Gateway["API Gateway & Auth"]
+        AG[API Gateway]
+        Auth[Auth Service]
+        direction TB
+        AG --> Auth
+    end
 
-    %% Core Services
-    MDS[Market Data Service]
-    AS[Arbitrage Scanner]
-    TE[Trading Engine]
-    RM[Risk Manager]
-    PM[Portfolio Manager]
-    CM[Config Manager]
-    AN[Analytics Service]
+    subgraph EventBus["Event Bus Layer"]
+        KB[Kafka Broker]
+        RMQ[RabbitMQ]
+    end
 
-    %% Data Layer
-    TS[(Time Series DB)]
-    RD[(Redis Cache)]
-    PG[(PostgreSQL)]
-    MQ[Message Queue]
-    VS[Vault Secrets]
+    subgraph MarketMS["Market Data Microservices"]
+        direction TB
+        MDS[Market Data Service]
+        subgraph MDS_DB["MDS Storage"]
+            MTS[(TimescaleDB)]
+            MRC[(Redis Cache)]
+        end
+        MDS --> MDS_DB
+    end
 
-    %% External Systems
-    EX1[Exchange 1]
-    EX2[Exchange 2]
-    EXN[Exchange N]
+    subgraph ScannerMS["Arbitrage Scanner Microservices"]
+        direction TB
+        AS[Scanner Service]
+        subgraph AS_DB["Scanner Storage"]
+            ARC[(Redis Cache)]
+        end
+        AS --> AS_DB
+    end
+
+    subgraph TradeMS["Trading Microservices"]
+        direction TB
+        TE[Trading Service]
+        subgraph TE_DB["Trade Storage"]
+            TPG[(PostgreSQL)]
+            TRC[(Redis Cache)]
+        end
+        TE --> TE_DB
+    end
+
+    subgraph RiskMS["Risk Management Microservices"]
+        direction TB
+        RM[Risk Service]
+        subgraph RM_DB["Risk Storage"]
+            RTS[(TimescaleDB)]
+            RRC[(Redis Cache)]
+        end
+        RM --> RM_DB
+    end
+
+    subgraph PortfolioMS["Portfolio Microservices"]
+        direction TB
+        PM[Portfolio Service]
+        subgraph PM_DB["Portfolio Storage"]
+            PPG[(PostgreSQL)]
+            PRC[(Redis Cache)]
+        end
+        PM --> PM_DB
+    end
+
+    subgraph ConfigMS["Config Microservices"]
+        direction TB
+        CM[Config Service]
+        VS[(Vault Secrets)]
+        CM --> VS
+    end
+
+    subgraph AnalyticsMS["Analytics Microservices"]
+        direction TB
+        AN[Analytics Service]
+        subgraph AN_DB["Analytics Storage"]
+            ATS[(TimescaleDB)]
+            APG[(PostgreSQL)]
+        end
+        AN --> AN_DB
+    end
+
+    subgraph External["Exchange Layer"]
+        EX1[Exchange 1]
+        EX2[Exchange 2]
+        EXN[Exchange N]
+    end
 
     %% Client to Gateway
-    WD --> AG
-    AC --> AG
-    MA --> AG
-    AG --> Auth
-    Auth --> LB
+    Client --> AG
 
     %% Gateway to Services
-    LB --> MDS
-    LB --> AS
-    LB --> TE
-    LB --> RM
-    LB --> PM
-    LB --> CM
-    LB --> AN
+    AG --> EventBus
 
-    %% Market Data Service
-    MDS --> TS
-    MDS --> RD
-    MDS --> EX1
-    MDS --> EX2
-    MDS --> EXN
+    %% Event Bus to Services
+    EventBus --> MarketMS
+    EventBus --> ScannerMS
+    EventBus --> TradeMS
+    EventBus --> RiskMS
+    EventBus --> PortfolioMS
+    EventBus --> AnalyticsMS
 
-    %% Arbitrage Scanner
-    AS --> MDS
-    AS --> RD
-    AS --> MQ
+    %% Market Data Flow
+    MarketMS --> External
+    External --> MarketMS
 
-    %% Trading Engine
-    TE --> AS
-    TE --> RM
-    TE --> PM
-    TE --> EX1
-    TE --> EX2
-    TE --> EXN
-    TE --> MQ
+    %% Service to Event Bus
+    MarketMS --> EventBus
+    ScannerMS --> EventBus
+    TradeMS --> EventBus
+    RiskMS --> EventBus
+    PortfolioMS --> EventBus
+    AnalyticsMS --> EventBus
 
-    %% Risk Manager
-    RM --> RD
-    RM --> PG
-    RM --> MQ
+    %% Trading Flow
+    TradeMS --> External
+```
 
-    %% Portfolio Manager
-    PM --> PG
-    PM --> TS
-    PM --> RD
 
-    %% Config Manager
-    CM --> VS
+```mermaid
+graph TD
+    subgraph EventBusLayer["Event Bus Layer"]
+        subgraph KafkaTopics["Kafka Topics - Real-time Events"]
+            MT[Market Data Topic]
+            ST[Scanner Topic]
+            TT[Trade Topic]
+            RT[Risk Topic]
+            PT[Portfolio Topic]
+        end
+        
+        subgraph RMQQueues["RabbitMQ Queues - Task Processing"]
+            AQ[Analytics Queue]
+            NQ[Notification Queue]
+            BQ[Batch Processing Queue]
+            RQ[Report Queue]
+        end
+    end
 
-    %% Analytics Service
-    AN --> TS
-    AN --> PG
-    AN --> RD
+    subgraph Publishers["Event Publishers"]
+        MD[Market Data Service]
+        AS[Arbitrage Scanner]
+        TS[Trading Service]
+        RS[Risk Service]
+        PS[Portfolio Service]
+    end
 
-    %% Message Queue
-    MQ --> MDS
-    MQ --> AS
-    MQ --> TE
-    MQ --> RM
-    MQ --> PM
-    MQ --> AN
+    subgraph Subscribers["Event Subscribers"]
+        SC[Scanner Service]
+        TE[Trading Engine]
+        RM[Risk Manager]
+        PM[Portfolio Manager]
+        AN[Analytics Service]
+    end
+
+    %% Market Data Flow
+    MD -->|price updates| MT
+    MD -->|orderbook changes| MT
+    MT -->|market data| SC
+    MT -->|price feed| TE
+    
+    %% Scanner Flow
+    AS -->|arbitrage opportunities| ST
+    ST -->|trade signals| TE
+    
+    %% Trading Flow
+    TS -->|order status| TT
+    TS -->|execution events| TT
+    TT -->|position updates| RM
+    TT -->|balance changes| PM
+    
+    %% Risk Flow
+    RS -->|risk alerts| RT
+    RT -->|risk limits| TE
+    RT -->|exposure updates| PM
+    
+    %% Portfolio Flow
+    PS -->|portfolio updates| PT
+    PT -->|performance metrics| AN
+    
+    %% Batch Processing
+    Publishers -->|batch tasks| RMQQueues
+    RMQQueues -->|processed results| Subscribers
+```
+
+
+```mermaid
+sequenceDiagram
+    participant MD as Market Data Service
+    participant AS as Arbitrage Scanner
+    participant RM as Risk Manager
+    participant TE as Trading Engine
+    participant PM as Portfolio Manager
+    participant EX as Exchange Layer
+    participant KB as Kafka Broker
+
+    Note over MD,KB: Phase 1: Opportunity Detection
+    MD->>KB: Publish market data update
+    KB->>AS: Consume market data
+    AS->>AS: Detect arbitrage opportunity
+    AS->>KB: Publish arbitrage signal
+
+    Note over KB,RM: Phase 2: Pre-trade Validation
+    KB->>TE: Consume arbitrage signal
+    TE->>RM: Request risk check
+    activate RM
+    RM->>PM: Check available balance
+    PM->>RM: Return balance status
+    RM->>TE: Return risk validation
+    deactivate RM
+
+    Note over TE,EX: Phase 3: Order Execution
+    alt Risk Check Passed
+        TE->>TE: Generate order pairs
+        par Exchange A Order
+            TE->>EX: Submit buy order (Exchange A)
+            EX-->>TE: Order A confirmation
+        and Exchange B Order
+            TE->>EX: Submit sell order (Exchange B)
+            EX-->>TE: Order B confirmation
+        end
+        TE->>KB: Publish order status
+
+        Note over KB,PM: Phase 4: Post-trade Processing
+        KB->>PM: Update portfolio
+        PM->>PM: Calculate P&L
+        PM->>KB: Publish portfolio update
+        KB->>RM: Update risk exposure
+        
+        Note over TE,PM: Phase 5: Settlement
+        TE->>PM: Settle positions
+        PM->>PM: Update balances
+        PM->>KB: Publish settlement status
+    else Risk Check Failed
+        TE->>KB: Publish rejection reason
+    end
+
+    Note over KB: Phase 6: Analytics & Reporting
+    KB->>AS: Update opportunity statistics
+    KB->>PM: Update trading performance
+    KB->>RM: Update risk metrics
+```
+
+```mermaid
+graph TD
+    subgraph ExchangeLayer["Exchange Layer"]
+        direction TB
+        subgraph Adapters["Exchange Adapters"]
+            BN[Binance Adapter]
+            OK[OKX Adapter]
+            BB[Bybit Adapter]
+        end
+
+        subgraph Common["Common Components"]
+            RC[Rate Limiter]
+            AM[Authentication Manager]
+            EM[Error Handler]
+        end
+
+        subgraph DataStreams["Data Streams"]
+            WS[WebSocket Manager]
+            REST[REST API Client]
+            FIX[FIX Protocol Client]
+        end
+    end
+
+    subgraph ExternalExchanges["External Exchanges"]
+        BE[Binance Exchange]
+        OE[OKX Exchange]
+        BY[Bybit Exchange]
+    end
+
+    subgraph InternalServices["Internal Services"]
+        MDS[Market Data Service]
+        TE[Trading Engine]
+    end
+
+    %% Connections
+    Adapters --> Common
+    Adapters --> DataStreams
+    
+    %% External Connections
+    WS --> BE
+    WS --> OE
+    WS --> BY
+    REST --> BE
+    REST --> OE
+    REST --> BY
+    FIX --> BE
+    FIX --> OE
+    FIX --> BY
+
+    %% Internal Connections
+    MDS --> Adapters
+    TE --> Adapters
 ```
 
 ### 2. Core Services Details
