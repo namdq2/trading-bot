@@ -13,35 +13,37 @@ marketdata/
 │   │   └── valueobject/
 │   │       ├── price.go
 │   │       └── volume.go
+│   ├── application/
+│   │   ├── dto/
+│   │   │   ├── orderbook_dto.go
+│   │   │   └── trade_dto.go
+│   │   ├── port/
+│   │   │   ├── input/
+│   │   │   │   └── marketdata_usecase.go
+│   │   │   └── output/
+│   │   │       ├── repository_port.go
+│   │   │       └── exchange_port.go
+│   │   └── service/
+│   │       └── marketdata_service.go
 │   ├── infrastructure/
-│   │   ├── persistence/
-│   │   │   ├── redis/
-│   │   │   │   └── orderbook_repository.go
-│   │   │   └── timescale/
-│   │   │       └── trade_repository.go
 │   │   ├── exchange/
+│   │   │   ├── types.go
 │   │   │   ├── binance/
 │   │   │   │   └── client.go
 │   │   │   ├── okx/
 │   │   │   │   └── client.go
 │   │   │   └── bybit/
 │   │   │       └── client.go
+│   │   ├── persistence/
+│   │   │   ├── redis/
+│   │   │   │   └── orderbook_repository.go
+│   │   │   └── timescale/
+│   │   │       └── trade_repository.go
 │   │   └── messaging/
 │   │       ├── kafka/
 │   │       │   └── publisher.go
 │   │       └── rabbitmq/
 │   │           └── publisher.go
-│   ├── application/
-│   │   ├── dto/
-│   │   │   ├── orderbook_dto.go
-│   │   │   └── trade_dto.go
-│   │   ├── service/
-│   │   │   └── marketdata_service.go
-│   │   └── port/
-│   │       ├── input/
-│   │       │   └── marketdata_usecase.go
-│   │       └── output/
-│   │           └── repository_port.go
 │   └── interfaces/
 │       ├── api/
 │       │   ├── http/

@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yourusername/marketdata/internal/config"
-	"github.com/yourusername/marketdata/internal/service"
-	"github.com/yourusername/marketdata/pkg/logger"
+	"marketdata/config"
+	"marketdata/internal/application/service"
+	"marketdata/pkg/logger"
 )
 
 func main() {

@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/yourusername/marketdata/internal/config"
-	"github.com/yourusername/marketdata/internal/exchange"
+	"github.com/yourusername/marketdata/internal/infrastructure/exchange"
 	"github.com/yourusername/marketdata/internal/models"
 )
 

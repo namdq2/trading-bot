@@ -1,777 +1,264 @@
-# ARBITRAGE TRADING BOT - COMPLETE DOCUMENTATION
+# Market Data Service
 
-## PART 1: ARBITRAGE TRADING STRATEGY
+A microservice for collecting, processing, and distributing real-time market data from multiple cryptocurrency exchanges. Built using Domain-Driven Design and Clean Architecture principles.
 
-### 1. Arbitrage Trading Overview
+## Table of Contents
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Development Setup](#development-setup)
+- [Project Structure](#project-structure)
+- [Configuration](#configuration)
+- [Building and Running](#building-and-running)
+- [Deployment](#deployment)
+- [API Documentation](#api-documentation)
+- [Testing](#testing)
 
-#### 1.1. Definition
-Arbitrage trading is a strategy that takes advantage of price differences for the same asset across different markets to generate profit.
+## Architecture
 
-#### 1.2. Types of Arbitrage
-1. Pure Arbitrage
-2. Statistical Arbitrage
-3. Triangular Arbitrage
+This service follows Clean Architecture and DDD principles:
 
-### 2. Pure Arbitrage Strategy Details
-
-#### 2.1. Two-Exchange Buffer Strategy
 ```
-Capital structure per exchange:
-- 70% USDT
-- 30% Token
-
-Example with 100,000 USDT:
-Exchange A:
-- 35,000 USDT
-- 15,000 worth Token
-
-Exchange B:
-- 35,000 USDT
-- 15,000 worth Token
-```
-
-#### 2.2. Trading Example
-```
-Scenario:
-- Token price at Exchange A: 100 USDT
-- Token price at Exchange B: 100.5 USDT
-- Spread: 0.5%
-- Trading fee: 0.1% per exchange
-
-Execution:
-1. Buy 100 tokens at A = 10,000 USDT
-2. Sell 100 tokens at B = 10,050 USDT
-
-Calculation:
-- Gross profit: 50 USDT
-- Fees: 20 USDT (10 USDT per exchange)
-- Net profit: 30 USDT (0.3%)
+┌───────────────────┐
+│     Interface     │ HTTP/gRPC handlers, Event consumers
+├───────────────────┤
+│   Application     │ Use cases, DTOs, Ports
+├───────────────────┤
+│     Domain        │ Entities, Value Objects, Domain Services
+├───────────────────┤
+│ Infrastructure    │ Repositories, External Services
+└───────────────────┘
 ```
 
-### 3. Key Profit Indicators
+### Key Components:
+- Domain Layer: Core business logic and rules
+- Application Layer: Orchestration and use cases
+- Infrastructure Layer: External systems integration
+- Interface Layer: API endpoints and event handlers
 
-#### 3.1. Primary Indicators
-1. Spread:
-```
-Formula: 
-Spread % = ((Sell Price - Buy Price) / Buy Price) × 100
+## Prerequisites
 
-Example:
-- Buy price A: 100 USDT
-- Sell price B: 100.5 USDT
-- Spread = 0.5%
+- Go 1.21 or later
+- Docker and Docker Compose
+- Redis
+- PostgreSQL/TimescaleDB
+- Kafka
 
-Minimum threshold:
-- Spread > (Total fees + 0.1%)
-```
+## Development Setup
 
-2. Volume and Liquidity:
-```
-Key Metrics:
-- 24h Volume
-- Orderbook depth
-- Market impact
-- Available liquidity
-
-Liquidity Check Example:
-Required volume: 100 Tokens
-Exchange A orderbook:
-- 50 tokens at 100 USDT
-- 30 tokens at 100.1 USDT
-- 20 tokens at 100.2 USDT
-→ Average slippage: 0.1%
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/marketdata.git
+cd marketdata
 ```
 
-3. Volatility:
-```
-Measurements:
-- Price standard deviation
-- 24h price range
-- Candle size
-
-Example:
-High Volatility:
-- StdDev > 2%
-- Candles > 1%
-→ Increased risk, higher spread required
+2. Install dependencies:
+```bash
+go mod download
 ```
 
-#### 3.2. Risk Indicators
-
-1. Stop Loss:
-```
-Settings:
-- Per-trade loss limit
-- Daily loss percentage
-- Maximum drawdown
-
-Example:
-- Per trade: -0.2%
-- Daily: -1%
-- Drawdown: -5%
+3. Set up local infrastructure:
+```bash
+docker-compose up -d redis kafka timescaledb
 ```
 
-2. Position Size:
-```
-Calculation:
-Size = Min(
-    % Account size,
-    % Available liquidity,
-    Risk limit / Volatility
-)
-
-Example with 100,000 USDT:
-- Account size limit: 10% = 10,000
-- Liquidity available: 15,000
-- Volatility: 2%
-→ Size = Min(10000, 15000, 5000) = 5000
+4. Create configuration file:
+```bash
+cp config/config.example.yaml config/config.yaml
 ```
 
-## PART 2: SYSTEM DESIGN
-
-### 1. High-Level Architecture
-
-```mermaid
-graph TD
-    subgraph Client["Client Layer"]
-        WD[Web Dashboard]
-        AC[Admin Console]
-        MA[Mobile App]
-    end
-
-    subgraph Gateway["API Gateway & Auth"]
-        AG[API Gateway]
-        Auth[Auth Service]
-        direction TB
-        AG --> Auth
-    end
-
-    subgraph EventBus["Event Bus Layer"]
-        KB[Kafka Broker]
-        RMQ[RabbitMQ]
-    end
-
-    subgraph MarketMS["Market Data Microservices"]
-        direction TB
-        MDS[Market Data Service]
-        subgraph MDS_DB["MDS Storage"]
-            MTS[(TimescaleDB)]
-            MRC[(Redis Cache)]
-        end
-        MDS --> MDS_DB
-    end
-
-    subgraph ScannerMS["Arbitrage Scanner Microservices"]
-        direction TB
-        AS[Scanner Service]
-        subgraph AS_DB["Scanner Storage"]
-            ARC[(Redis Cache)]
-        end
-        AS --> AS_DB
-    end
-
-    subgraph TradeMS["Trading Microservices"]
-        direction TB
-        TE[Trading Service]
-        subgraph TE_DB["Trade Storage"]
-            TPG[(PostgreSQL)]
-            TRC[(Redis Cache)]
-        end
-        TE --> TE_DB
-    end
-
-    subgraph RiskMS["Risk Management Microservices"]
-        direction TB
-        RM[Risk Service]
-        subgraph RM_DB["Risk Storage"]
-            RTS[(TimescaleDB)]
-            RRC[(Redis Cache)]
-        end
-        RM --> RM_DB
-    end
-
-    subgraph PortfolioMS["Portfolio Microservices"]
-        direction TB
-        PM[Portfolio Service]
-        subgraph PM_DB["Portfolio Storage"]
-            PPG[(PostgreSQL)]
-            PRC[(Redis Cache)]
-        end
-        PM --> PM_DB
-    end
-
-    subgraph ConfigMS["Config Microservices"]
-        direction TB
-        CM[Config Service]
-        VS[(Vault Secrets)]
-        CM --> VS
-    end
-
-    subgraph AnalyticsMS["Analytics Microservices"]
-        direction TB
-        AN[Analytics Service]
-        subgraph AN_DB["Analytics Storage"]
-            ATS[(TimescaleDB)]
-            APG[(PostgreSQL)]
-        end
-        AN --> AN_DB
-    end
-
-    subgraph External["Exchange Layer"]
-        EX1[Exchange 1]
-        EX2[Exchange 2]
-        EXN[Exchange N]
-    end
-
-    %% Client to Gateway
-    Client --> AG
-
-    %% Gateway to Services
-    AG --> EventBus
-
-    %% Event Bus to Services
-    EventBus --> MarketMS
-    EventBus --> ScannerMS
-    EventBus --> TradeMS
-    EventBus --> RiskMS
-    EventBus --> PortfolioMS
-    EventBus --> AnalyticsMS
-
-    %% Market Data Flow
-    MarketMS --> External
-    External --> MarketMS
-
-    %% Service to Event Bus
-    MarketMS --> EventBus
-    ScannerMS --> EventBus
-    TradeMS --> EventBus
-    RiskMS --> EventBus
-    PortfolioMS --> EventBus
-    AnalyticsMS --> EventBus
-
-    %% Trading Flow
-    TradeMS --> External
+5. Run the service:
+```bash
+go run cmd/main.go
 ```
 
+## Project Structure
 
-```mermaid
-graph TD
-    subgraph EventBusLayer["Event Bus Layer"]
-        subgraph KafkaTopics["Kafka Topics - Real-time Events"]
-            MT[Market Data Topic]
-            ST[Scanner Topic]
-            TT[Trade Topic]
-            RT[Risk Topic]
-            PT[Portfolio Topic]
-        end
-        
-        subgraph RMQQueues["RabbitMQ Queues - Task Processing"]
-            AQ[Analytics Queue]
-            NQ[Notification Queue]
-            BQ[Batch Processing Queue]
-            RQ[Report Queue]
-        end
-    end
-
-    subgraph Publishers["Event Publishers"]
-        MD[Market Data Service]
-        AS[Arbitrage Scanner]
-        TS[Trading Service]
-        RS[Risk Service]
-        PS[Portfolio Service]
-    end
-
-    subgraph Subscribers["Event Subscribers"]
-        SC[Scanner Service]
-        TE[Trading Engine]
-        RM[Risk Manager]
-        PM[Portfolio Manager]
-        AN[Analytics Service]
-    end
-
-    %% Market Data Flow
-    MD -->|price updates| MT
-    MD -->|orderbook changes| MT
-    MT -->|market data| SC
-    MT -->|price feed| TE
-    
-    %% Scanner Flow
-    AS -->|arbitrage opportunities| ST
-    ST -->|trade signals| TE
-    
-    %% Trading Flow
-    TS -->|order status| TT
-    TS -->|execution events| TT
-    TT -->|position updates| RM
-    TT -->|balance changes| PM
-    
-    %% Risk Flow
-    RS -->|risk alerts| RT
-    RT -->|risk limits| TE
-    RT -->|exposure updates| PM
-    
-    %% Portfolio Flow
-    PS -->|portfolio updates| PT
-    PT -->|performance metrics| AN
-    
-    %% Batch Processing
-    Publishers -->|batch tasks| RMQQueues
-    RMQQueues -->|processed results| Subscribers
+```
+marketdata/
+├── cmd/                    # Application entry points
+├── internal/              # Private application code
+│   ├── domain/            # Domain layer
+│   │   ├── entity/        # Domain entities
+│   │   ├── repository/    # Repository interfaces
+│   │   ├── service/       # Domain services
+│   │   └── valueobject/   # Value objects
+│   ├── infrastructure/    # Infrastructure layer
+│   │   ├── persistence/   # Database implementations
+│   │   ├── exchange/      # Exchange clients
+│   │   └── messaging/     # Message queue implementations
+│   ├── application/       # Application layer
+│   │   ├── dto/          # Data Transfer Objects
+│   │   ├── service/      # Application services
+│   │   └── port/         # Ports (interfaces)
+│   └── interfaces/        # Interface layer
+│       ├── api/          # HTTP/gRPC handlers
+│       └── event/        # Event handlers
+├── pkg/                   # Public libraries
+└── config/               # Configuration files
 ```
 
+## Configuration
 
-```mermaid
-sequenceDiagram
-    participant MD as Market Data Service
-    participant AS as Arbitrage Scanner
-    participant RM as Risk Manager
-    participant TE as Trading Engine
-    participant PM as Portfolio Manager
-    participant EX as Exchange Layer
-    participant KB as Kafka Broker
+Configuration is managed through `config.yaml`:
 
-    Note over MD,KB: Phase 1: Opportunity Detection
-    MD->>KB: Publish market data update
-    KB->>AS: Consume market data
-    AS->>AS: Detect arbitrage opportunity
-    AS->>KB: Publish arbitrage signal
+```yaml
+server:
+  http_port: 8080
+  grpc_port: 9090
 
-    Note over KB,RM: Phase 2: Pre-trade Validation
-    KB->>TE: Consume arbitrage signal
-    TE->>RM: Request risk check
-    activate RM
-    RM->>PM: Check available balance
-    PM->>RM: Return balance status
-    RM->>TE: Return risk validation
-    deactivate RM
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: password
+  dbname: marketdata
 
-    Note over TE,EX: Phase 3: Order Execution
-    alt Risk Check Passed
-        TE->>TE: Generate order pairs
-        par Exchange A Order
-            TE->>EX: Submit buy order (Exchange A)
-            EX-->>TE: Order A confirmation
-        and Exchange B Order
-            TE->>EX: Submit sell order (Exchange B)
-            EX-->>TE: Order B confirmation
-        end
-        TE->>KB: Publish order status
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  ttl: 1h
 
-        Note over KB,PM: Phase 4: Post-trade Processing
-        KB->>PM: Update portfolio
-        PM->>PM: Calculate P&L
-        PM->>KB: Publish portfolio update
-        KB->>RM: Update risk exposure
-        
-        Note over TE,PM: Phase 5: Settlement
-        TE->>PM: Settle positions
-        PM->>PM: Update balances
-        PM->>KB: Publish settlement status
-    else Risk Check Failed
-        TE->>KB: Publish rejection reason
-    end
+kafka:
+  brokers:
+    - localhost:9092
+  topic: orderbook_updates
+  group_id: marketdata_service
 
-    Note over KB: Phase 6: Analytics & Reporting
-    KB->>AS: Update opportunity statistics
-    KB->>PM: Update trading performance
-    KB->>RM: Update risk metrics
+exchange:
+  symbols:
+    - BTC-USDT
+    - ETH-USDT
+  binance:
+    api_key: your_api_key
+    api_secret: your_api_secret
+  okx:
+    api_key: your_api_key
+    api_secret: your_api_secret
 ```
 
-```mermaid
-graph TD
-    subgraph ExchangeLayer["Exchange Layer"]
-        direction TB
-        subgraph Adapters["Exchange Adapters"]
-            BN[Binance Adapter]
-            OK[OKX Adapter]
-            BB[Bybit Adapter]
-        end
+## Building and Running
 
-        subgraph Common["Common Components"]
-            RC[Rate Limiter]
-            AM[Authentication Manager]
-            EM[Error Handler]
-        end
+### Local Development
+```bash
+# Run with hot reload
+go install github.com/cosmtrek/air@latest
+air
 
-        subgraph DataStreams["Data Streams"]
-            WS[WebSocket Manager]
-            REST[REST API Client]
-            FIX[FIX Protocol Client]
-        end
-    end
+# Run tests
+go test ./...
 
-    subgraph ExternalExchanges["External Exchanges"]
-        BE[Binance Exchange]
-        OE[OKX Exchange]
-        BY[Bybit Exchange]
-    end
-
-    subgraph InternalServices["Internal Services"]
-        MDS[Market Data Service]
-        TE[Trading Engine]
-    end
-
-    %% Connections
-    Adapters --> Common
-    Adapters --> DataStreams
-    
-    %% External Connections
-    WS --> BE
-    WS --> OE
-    WS --> BY
-    REST --> BE
-    REST --> OE
-    REST --> BY
-    FIX --> BE
-    FIX --> OE
-    FIX --> BY
-
-    %% Internal Connections
-    MDS --> Adapters
-    TE --> Adapters
+# Run linter
+golangci-lint run
 ```
 
-### 2. Core Services Details
+### Docker Build
+```bash
+# Build image
+docker build -t marketdata:latest .
 
-#### 2.1. Market Data Service
-```
-Purpose:
-- Collect real-time market data
-- Normalize data from multiple exchanges
-- Process and store market data
-
-Functions:
-1. Data Collection
-   - Websocket connections
-   - Order book management
-   - Trade data collection
-   
-2. Data Processing
-   - Normalization
-   - Aggregation
-   - Clean up
-
-3. Data Distribution
-   - Real-time feeds
-   - Historical data
-   - Market metrics
-
-Technology:
-- Node.js/Go for websocket
-- InfluxDB/TimescaleDB
-- Redis pub/sub
-- Apache Kafka
+# Run container
+docker run -p 8080:8080 -p 9090:9090 marketdata:latest
 ```
 
-#### 2.2. Arbitrage Scanner
-```
-Purpose:
-- Detect arbitrage opportunities
-- Calculate profitability
-- Assess feasibility
+## Deployment
 
-Functions:
-1. Opportunity Detection
-   - Spread calculation
-   - Volume analysis
-   - Market impact estimation
-   
-2. Profitability Analysis
-   - Fee calculation
-   - Slippage estimation
-   - Net profit projection
+### Kubernetes Deployment
 
-3. Signal Generation
-   - Trading signals
-   - Priority ranking
-   - Execution recommendations
+1. Create Kubernetes manifests:
 
-Technology:
-- Rust/Go for performance
-- Redis streams
-- Machine learning models
-```
-
-#### 2.3. Trading Engine
-```
-Purpose:
-- Execute trades
-- Manage trade lifecycle
-- Optimize execution
-
-Functions:
-1. Order Execution
-   - Smart order routing
-   - Order splitting
-   - Timing optimization
-   
-2. Position Management
-   - Balance tracking
-   - Position reconciliation
-   - Settlement handling
-
-3. Performance Optimization
-   - Latency reduction
-   - Order batching
-   - Queue management
-
-Technology:
-- Rust/C++ for latency
-- Redis/Aerospike
-- FPGA for HFT
+```yaml
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: marketdata
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: marketdata
+  template:
+    metadata:
+      labels:
+        app: marketdata
+    spec:
+      containers:
+      - name: marketdata
+        image: marketdata:latest
+        ports:
+        - containerPort: 8080
+        - containerPort: 9090
+        envFrom:
+        - configMapRef:
+            name: marketdata-config
 ```
 
-#### 2.4. Portfolio Management
-```
-Purpose:
-- Manage investment portfolio
-- Track portfolio performance
-- Optimize capital allocation
-
-Functions:
-1. Balance Management
-   - Asset tracking
-   - Balance reconciliation
-   - Rebalancing automation
-   
-2. Performance Analysis
-   - ROI calculation
-   - PnL tracking
-   - Performance attribution
-
-3. Capital Allocation
-   - Buffer management
-   - Position sizing
-   - Fund distribution
-
-Technology:
-- PostgreSQL for data storage
-- Python for analytics
-- Redis for real-time tracking
+2. Deploy to Kubernetes:
+```bash
+kubectl apply -f k8s/
 ```
 
-#### 2.5. Configuration Management
-```
-Purpose:
-- Manage system configuration
-- Ensure consistency
-- Control changes
+### Monitoring
 
-Functions:
-1. Config Storage & Validation
-   - Version control
-   - Schema validation
-   - Config deployment
-   
-2. Environment Management
-   - Multi-environment support
-   - Variable resolution
-   - Profile management
+The service exposes metrics for Prometheus at `/metrics` and includes:
+- Request latencies
+- Error rates
+- Exchange connection status
+- Order book update rates
 
-3. Security Management
-   - Secret management
-   - Access control
-   - Audit logging
+### Logging
 
-Technology:
-- Vault for secret management
-- Git for version control
-- etcd/ZooKeeper for distributed config
-```
-
-#### 2.6. Risk Manager
-```
-Purpose:
-- Manage real-time risk
-- Enforce risk limits
-- Monitor system
-
-Functions:
-1. Risk Calculation
-   - Position risk
-   - Market risk
-   - Liquidity risk
-   
-2. Limit Management
-   - Position limits
-   - Loss limits
-   - Exposure control
-
-3. Alert System
-   - Risk alerts
-   - Limit breaches
-   - System warnings
-
-Technology:
-- Python for risk models
-- TimescaleDB
-- Prometheus/Grafana
-```
-
-### 3. Performance Optimization
-
-#### 3.1. Latency Optimization
-```
-1. Network
-- Exchange co-location
-- Direct market access
-- Optimized network routes
-
-2. Processing
-- FPGA acceleration
-- Kernel bypass
-- Memory optimization
-
-3. Database
-- In-memory processing
-- Data locality
-- Query optimization
-```
-
-#### 3.2. Throughput Optimization
-```
-1. Parallel Processing
-- Multi-threading
-- Event-driven architecture
-- Async processing
-
-2. Data Management
-- Data partitioning
-- Cache strategies
-- Buffer management
-
-3. Resource Allocation
-- Load balancing
-- Resource pooling
-- Queue prioritization
-```
-
-#### 3.3. Reliability Optimization
-```
-1. Fault Tolerance
-- Service redundancy
-- Data replication
-- Failover systems
-
-2. Error Handling
-- Circuit breakers
-- Retry mechanisms
-- Graceful degradation
-
-3. Monitoring
-- Performance metrics
+Logs are structured using zap and include:
+- Request/Response logging
 - Error tracking
-- System health
+- Performance metrics
+- Exchange interactions
+
+## API Documentation
+
+### HTTP Endpoints
+
+```
+GET /api/v1/orderbook
+    Query Parameters:
+    - exchange: Exchange ID
+    - symbol: Trading pair symbol
+
+GET /api/v1/trades
+    Query Parameters:
+    - exchange: Exchange ID
+    - symbol: Trading pair symbol
+    - limit: Number of trades (default: 100)
 ```
 
-### 4. Profit Optimization Based on KPIs
+### gRPC Services
 
-#### 4.1. Spread-based Optimization
-```
-1. Scanner Configuration
-- Dynamic spread thresholds
-- Market-specific filters
-- Volume-based adjustments
+See `api/proto/marketdata.proto` for service definitions.
 
-2. Execution Strategy
-- Smart order routing
-- Timing optimization
-- Fee optimization
+## Testing
 
-3. Risk Management
-- Dynamic position sizing
-- Adaptive stop loss
-- Exposure management
+```bash
+# Run unit tests
+go test ./...
+
+# Run integration tests
+go test -tags=integration ./...
+
+# Generate test coverage
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
 ```
 
-#### 4.2. Portfolio Optimization
-```
-1. Balance Management
-- Dynamic rebalancing thresholds
-- Buffer optimization
-- Asset allocation strategies
+## Contributing
 
-2. Performance Enhancement
-- Portfolio diversification
-- Risk-adjusted returns
-- Capital efficiency
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-3. Operational Optimization
-- Rebalancing timing
-- Transaction cost minimization
-- Settlement efficiency
-```
+## License
 
-#### 4.3. Configuration Optimization
-```
-1. System Settings
-- Performance tuning
-- Resource allocation
-- Timeout configurations
-
-2. Trading Parameters
-- Dynamic thresholds
-- Market-specific settings
-- Risk parameters
-
-3. Environment Optimization
-- Environment-specific tuning
-- Service configuration
-- Integration settings
-```
-
-#### 4.4. Market Impact Optimization
-```
-1. Order Execution
-- Size optimization
-- Order splitting
-- Timing strategies
-
-2. Liquidity Management
-- Depth analysis
-- Volume distribution
-- Queue position
-
-3. Cost Analysis
-- Fee structure optimization
-- Route optimization
-- Settlement efficiency
-```
-
-### 5. Monitoring and Alerting
-
-#### 5.1. Performance Monitoring
-```
-1. Business Metrics
-- ROI tracking
-- Win rate
-- Profit per trade
-
-2. Technical Metrics
-- Latency
-- Success rate
-- Error rate
-
-3. Risk Metrics
-- Exposure levels
-- Loss ratios
-- Risk utilization
-```
-
-#### 5.2. Alert System
-```
-1. Trading Alerts
-- Opportunity alerts
-- Risk breaches
-- Performance issues
-
-2. System Alerts
-- Service health
-- Resource utilization
-- Error conditions
-
-3. Market Alerts
-- Volatility changes
-- Liquidity events
-- Market conditions
-```
+This project is licensed under the MIT License - see the LICENSE file for details.
